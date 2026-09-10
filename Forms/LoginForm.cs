@@ -8,15 +8,29 @@ namespace CampusOneDigitalAcademy.Forms
 {
     public partial class LoginForm : Form
     {
-        public LoginForm()
+        private readonly WelcomeForm _parentWelcomeForm;
+        private readonly string _initialUsername;
+
+        public LoginForm(WelcomeForm parentWelcomeForm = null, string prefilledUsername = null)
         {
             InitializeComponent();
+            _parentWelcomeForm = parentWelcomeForm;
+            _initialUsername = prefilledUsername;
         }
 
         private void LoginForm_Load(object sender, EventArgs e)
         {
             LoadLogoImage();
-            txtUsername.Focus();
+
+            if (!string.IsNullOrEmpty(_initialUsername))
+            {
+                txtUsername.Text = _initialUsername;
+                txtPassword.Focus();
+            }
+            else
+            {
+                txtUsername.Focus();
+            }
         }
 
         private void LoadLogoImage()
@@ -50,6 +64,11 @@ namespace CampusOneDigitalAcademy.Forms
             {
                 // Fallback: Continue smoothly even if image asset is unavailable
             }
+        }
+
+        private void chkShowPassword_CheckedChanged(object sender, EventArgs e)
+        {
+            txtPassword.UseSystemPasswordChar = !chkShowPassword.Checked;
         }
 
         private void btnLogin_Click(object sender, EventArgs e)
@@ -97,7 +116,29 @@ namespace CampusOneDigitalAcademy.Forms
         {
             txtUsername.Clear();
             txtPassword.Clear();
+            chkShowPassword.Checked = false;
             txtUsername.Focus();
+        }
+
+        private void lnkSignUp_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            SignUpForm signUpForm = new SignUpForm(_parentWelcomeForm);
+            this.Hide();
+            signUpForm.Show();
+        }
+
+        private void btnBack_Click(object sender, EventArgs e)
+        {
+            this.Hide();
+            if (_parentWelcomeForm != null && !_parentWelcomeForm.IsDisposed)
+            {
+                _parentWelcomeForm.Show();
+            }
+            else
+            {
+                WelcomeForm welcome = new WelcomeForm();
+                welcome.Show();
+            }
         }
 
         private void btnExit_Click(object sender, EventArgs e)
@@ -110,6 +151,14 @@ namespace CampusOneDigitalAcademy.Forms
             );
 
             if (dialogResult == DialogResult.Yes)
+            {
+                Application.Exit();
+            }
+        }
+
+        private void LoginForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing)
             {
                 Application.Exit();
             }

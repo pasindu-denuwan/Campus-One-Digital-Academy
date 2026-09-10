@@ -21,6 +21,8 @@ namespace CampusOneDigitalAcademy.Data
 
         private static readonly List<StudentRegistration> _inMemoryStudents = new List<StudentRegistration>();
         private static int _nextRegNo = 4;
+        private static readonly List<UserAccount> _inMemoryUsers = new List<UserAccount>();
+        private static int _nextUserId = 2;
 
         static DbHelper()
         {
@@ -31,6 +33,11 @@ namespace CampusOneDigitalAcademy.Data
 
         private static void InitializeSeedData()
         {
+            if (_inMemoryUsers.Count == 0)
+            {
+                _inMemoryUsers.Add(new UserAccount("Admin", "Campusone@123", "Administrator", 1));
+            }
+
             if (_inMemoryStudents.Count == 0)
             {
                 _inMemoryStudents.Add(new StudentRegistration
@@ -148,17 +155,120 @@ namespace CampusOneDigitalAcademy.Data
             }
         }
 
-        #region User Authentication
+        #region User Authentication & Registration
 
+        /// <summary>
+        /// Checks whether a username already exists in the system.
+        /// </summary>
+        public static bool UserExists(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return false;
+            string trimmedUser = username.Trim();
+
+            if (IsServerAvailable())
+            {
+                try
+                {
+                    using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+                    {
+                        conn.Open();
+                        string query = "SELECT COUNT(1) FROM Users WHERE username = @username";
+                        using (SqlCommand cmd = new SqlCommand(query, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@username", trimmedUser);
+                            int count = Convert.ToInt32(cmd.ExecuteScalar());
+                            if (count > 0) return true;
+                        }
+                    }
+                }
+                catch
+                {
+                    _isServerOnline = false;
+                }
+            }
+
+            // Fallback in-memory check
+            return _inMemoryUsers.Exists(u => string.Equals(u.Username, trimmedUser, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>
+        /// Registers a new user in SQL Server and the fallback memory registry.
+        /// </summary>
+        public static bool RegisterUser(string username, string password, string role, out string errorMessage)
+        {
+            errorMessage = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(username))
+            {
+                errorMessage = "Username cannot be empty.";
+                return false;
+            }
+
+            if (string.IsNullOrEmpty(password))
+            {
+                errorMessage = "Password cannot be empty.";
+                return false;
+            }
+
+            string trimmedUser = username.Trim();
+
+            if (UserExists(trimmedUser))
+            {
+                errorMessage = "Username already exists. Please choose a different username.";
+                return false;
+            }
+
+            string assignedRole = string.IsNullOrWhiteSpace(role) ? "User" : role;
+            bool sqlSuccess = false;
+
+            if (IsServerAvailable())
+            {
+                try
+                {
+                    using (SqlConnection conn = new SqlConnection(GetConnectionString()))
+                    {
+                        conn.Open();
+                        string query = "INSERT INTO Users (username, password, role) VALUES (@username, @password, @role)";
+                        using (SqlCommand cmd = new SqlCommand(query, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@username", trimmedUser);
+                            cmd.Parameters.AddWithValue("@password", password);
+                            cmd.Parameters.AddWithValue("@role", assignedRole);
+                            int rows = cmd.ExecuteNonQuery();
+                            sqlSuccess = rows > 0;
+                        }
+                    }
+                }
+                catch (SqlException ex)
+                {
+                    _isServerOnline = false;
+                    // If it was a duplicate key error in SQL Server
+                    if (ex.Number == 2627 || ex.Number == 2601)
+                    {
+                        errorMessage = "Username already exists in the database.";
+                        return false;
+                    }
+                }
+            }
+
+            // Always sync into in-memory store so the user can immediately log in offline or online
+            _inMemoryUsers.Add(new UserAccount(trimmedUser, password, assignedRole, _nextUserId++));
+            return true;
+        }
+
+        /// <summary>
+        /// Validates user credentials against SQL Server and the fallback memory registry.
+        /// </summary>
         public static bool ValidateLogin(string username, string password, out string role)
         {
-            role = "Administrator";
+            role = "User";
 
-            // Instant check for default administrator credentials
-            if (string.Equals(username, "Admin", StringComparison.OrdinalIgnoreCase) && password == "Campusone@123")
+            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrEmpty(password))
             {
-                return true;
+                return false;
             }
+
+            string trimmedUser = username.Trim();
 
             // Check database users if server is online
             if (IsServerAvailable())
@@ -171,7 +281,7 @@ namespace CampusOneDigitalAcademy.Data
                         string query = "SELECT role FROM Users WHERE username = @username AND password = @password";
                         using (SqlCommand cmd = new SqlCommand(query, conn))
                         {
-                            cmd.Parameters.AddWithValue("@username", username.Trim());
+                            cmd.Parameters.AddWithValue("@username", trimmedUser);
                             cmd.Parameters.AddWithValue("@password", password);
 
                             object result = cmd.ExecuteScalar();
@@ -187,6 +297,14 @@ namespace CampusOneDigitalAcademy.Data
                 {
                     _isServerOnline = false;
                 }
+            }
+
+            // Fallback / In-Memory check
+            var user = _inMemoryUsers.Find(u => string.Equals(u.Username, trimmedUser, StringComparison.OrdinalIgnoreCase) && u.Password == password);
+            if (user != null)
+            {
+                role = user.Role;
+                return true;
             }
 
             return false;
