@@ -12,3 +12,4 @@ D:\OneDrive\Documents\GitHub\Campus One Digital Academy\bin\Release\normnfkc.nlp
 D:\OneDrive\Documents\GitHub\Campus One Digital Academy\bin\Release\normnfkd.nlp
 D:\OneDrive\Documents\GitHub\Campus One Digital Academy\obj\Release\CampusOneDigitalAcademy.exe
 D:\OneDrive\Documents\GitHub\Campus One Digital Academy\obj\Release\CampusOneDigitalAcademy.pdb
+D:\OneDrive\Documents\GitHub\Campus One Digital Academy\bin\Release\Assets\logo.jpeg

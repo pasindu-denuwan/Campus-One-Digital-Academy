@@ -29,10 +29,13 @@ namespace CampusOneDigitalAcademy.Forms
                 string basePath = AppDomain.CurrentDomain.BaseDirectory;
                 string[] possiblePaths = new string[]
                 {
+                    Path.Combine(basePath, "Assets", "logo.jpeg"),
                     Path.Combine(basePath, "Assets", "logo.png"),
                     Path.Combine(basePath, "Assets", "logo.jpg"),
+                    Path.Combine(basePath, "..", "..", "Assets", "logo.jpeg"),
                     Path.Combine(basePath, "..", "..", "Assets", "logo.png"),
                     Path.Combine(basePath, "..", "..", "Assets", "logo.jpg"),
+                    Path.Combine(Directory.GetCurrentDirectory(), "Assets", "logo.jpeg"),
                     Path.Combine(Directory.GetCurrentDirectory(), "Assets", "logo.png"),
                     Path.Combine(Directory.GetCurrentDirectory(), "Assets", "logo.jpg")
                 };
